@@ -1,6 +1,6 @@
-# 🛠️ Lite WordPress - Administrative Guide
+# 🔒 Secure WordPress - Administrative Guide
 
-Bu dokümantasyon, Lite WordPress projesinin yönetici perspektifinden detaylı açıklamasını içerir.
+Bu dokümantasyon, güvenlik odaklı Secure WordPress projesinin yönetici perspektifinden detaylı açıklamasını içerir. Production-ready güvenlik araçları, monitoring ve backup çözümleri ile birlikte gelir.
 
 ## 📋 İçindekiler
 
@@ -8,14 +8,17 @@ Bu dokümantasyon, Lite WordPress projesinin yönetici perspektifinden detaylı 
 2. [Dosya Açıklamaları](#dosya-açıklamaları)
 3. [Script Detayları](#script-detayları)
 4. [Güvenlik Mimarisi](#güvenlik-mimarisi)
-5. [Operasyonel Süreçler](#operasyonel-süreçler)
-6. [Sorun Giderme](#sorun-giderme)
-7. [Bakım ve Güncelleme](#bakım-ve-güncelleme)
+5. [Monitoring & Logging](#monitoring--logging)
+6. [Backup & Recovery](#backup--recovery)
+7. [Otomatik Güncellemeler](#otomatik-güncellemeler)
+8. [Operasyonel Süreçler](#operasyonel-süreçler)
+9. [Sorun Giderme](#sorun-giderme)
+10. [Bakım ve Güncelleme](#bakım-ve-güncelleme)
 
 ## 🏗️ Proje Yapısı
 
 ```
-Lite-Workpress/
+Secure-Wordpress/
 ├── 📄 README.md                    # Proje özeti ve hızlı başlangıç
 ├── 📖 GUIDE.md                     # Kullanıcı kılavuzu
 ├── 🛠️ ADMINISTRATIVE-GUIDE.md     # Bu dosya - Yönetici kılavuzu
@@ -24,21 +27,37 @@ Lite-Workpress/
 ├── 🚀 setup.sh                    # Otomatik kurulum scripti
 ├── 📝 .env.example                # Environment değişkenleri şablonu
 ├── 🚫 .gitignore                  # Git ignore kuralları
-└── 🔒 .env                        # Hassas bilgiler (GitHub'a yüklenmez)
+├── 🔒 .env                        # Hassas bilgiler (GitHub'a yüklenmez)
+├── 🛡️ fail2ban/                  # Fail2Ban konfigürasyonu
+│   └── jail.local                 # Brute force koruma kuralları
+├── 📊 prometheus/                 # Monitoring konfigürasyonu
+│   └── prometheus.yml             # Metrics toplama ayarları
+├── 📈 grafana/                    # Dashboard konfigürasyonu
+│   └── provisioning/              # Otomatik datasource ayarları
+├── 💾 restic-config/              # Backup konfigürasyonu
+│   └── backup.sh                  # Backup scripti
+└── 📁 logs/                       # Log dosyaları
+    ├── wordpress/                 # WordPress logları
+    ├── database/                  # MySQL logları
+    └── traefik/                   # Traefik logları
 ```
 
 ## 📁 Dosya Açıklamaları
 
 ### 🐳 **docker-compose.yml** - Ana Konfigürasyon
 
-**Amaç**: Docker container'larının ana konfigürasyonu
+**Amaç**: Güvenlik odaklı Docker container'larının ana konfigürasyonu
 
-**Özellikler**:
+**Servisler**:
+- **Traefik**: Reverse proxy ve SSL sertifikası
 - **MySQL 8.0**: Veritabanı servisi
 - **WordPress 6.4-apache**: Web servisi
-- **Güvenlik Sertleştirmesi**: Read-only, no-new-privileges
-- **Network İzolasyonu**: Özel bridge network
-- **Volume Yönetimi**: Kalıcı veri saklama
+- **Fail2Ban**: Brute force koruması
+- **Watchtower**: Otomatik güncellemeler
+- **Prometheus**: Metrics toplama
+- **Grafana**: Monitoring dashboard
+- **Portainer**: Docker yönetimi
+- **Restic**: Backup çözümü
 
 **Güvenlik Özellikleri**:
 ```yaml
@@ -48,6 +67,7 @@ read_only: true               # Salt okunur container
 tmpfs:                        # Geçici dosyalar RAM'de
   - /tmp
   - /var/run/mysqld
+  - /var/run/apache2
 user: "33:33"                 # www-data kullanıcısı
 ```
 
@@ -502,6 +522,199 @@ tail -f /var/log/wordpress/error.log
 - **MySQL Container**: ~300-600MB RAM
 - **Disk Kullanımı**: ~1-2GB (boş kurulum)
 
+## 📊 Monitoring & Logging
+
+### **Prometheus Metrics Collection**
+
+**Amaç**: Sistem metriklerini toplama ve saklama
+
+**Konfigürasyon**:
+```yaml
+# prometheus/prometheus.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+  - job_name: 'wordpress'
+    static_configs:
+      - targets: ['wordpress:80']
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['db:3306']
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['traefik:8080']
+```
+
+**Yönetim Komutları**:
+```bash
+# Prometheus durumunu kontrol et
+curl http://localhost:9090/api/v1/targets
+
+# Metrics endpoint'lerini listele
+curl http://localhost:9090/api/v1/label/__name__/values
+
+# Alert kurallarını kontrol et
+docker-compose exec prometheus cat /etc/prometheus/rules.yml
+```
+
+### **Grafana Dashboard**
+
+**Amaç**: Metrikleri görselleştirme ve dashboard yönetimi
+
+**Konfigürasyon**:
+```yaml
+# grafana/provisioning/datasources/datasources.yml
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+```
+
+**Yönetim Komutları**:
+```bash
+# Grafana'ya erişim
+https://dashboard.yourdomain.com
+# Kullanıcı: admin
+# Şifre: .env dosyasındaki GRAFANA_ADMIN_PASSWORD
+
+# Dashboard'ları import et
+# Grafana web arayüzünden dashboard ID'leri ile import yapın
+```
+
+### **Log Management**
+
+**Log Klasör Yapısı**:
+```
+logs/
+├── wordpress/
+│   ├── access.log      # Apache access logları
+│   ├── error.log       # Apache error logları
+│   └── other_vhosts_access.log
+├── database/
+│   ├── error.log       # MySQL error logları
+│   ├── general.log     # MySQL general logları
+│   └── slow.log        # MySQL slow query logları
+└── traefik/
+    └── traefik.log     # Traefik logları
+```
+
+**Log Rotasyon**:
+```bash
+# Log rotasyon scripti
+#!/bin/bash
+find logs/ -name "*.log" -size +100M -exec gzip {} \;
+find logs/ -name "*.log.gz" -mtime +30 -delete
+```
+
+## 💾 Backup & Recovery
+
+### **Restic Backup System**
+
+**Amaç**: Şifreli, artımlı backup çözümü
+
+**Konfigürasyon**:
+```bash
+# restic-config/backup.sh
+#!/bin/bash
+set -e
+
+# Initialize repository if it doesn't exist
+if ! restic snapshots >/dev/null 2>&1; then
+    restic init
+fi
+
+# Backup WordPress files
+restic backup /wordpress --tag wordpress
+
+# Backup MySQL database
+restic backup /mysql --tag mysql
+
+# Cleanup old backups (keep last 7 days)
+restic forget --keep-daily 7 --prune
+```
+
+**Yönetim Komutları**:
+```bash
+# Manuel backup çalıştır
+docker-compose exec restic-backup /config/backup.sh
+
+# Backup'ları listele
+docker-compose exec restic-backup restic snapshots
+
+# Backup'ı geri yükle
+docker-compose exec restic-backup restic restore latest --target /
+
+# Backup repository'sini kontrol et
+docker-compose exec restic-backup restic stats
+```
+
+### **Backup Stratejisi**
+
+**Günlük Backup**:
+```bash
+# Cron job (host sistemde)
+0 2 * * * cd /path/to/Secure-Wordpress && docker-compose exec restic-backup /config/backup.sh
+```
+
+**Haftalık Full Backup**:
+```bash
+# Haftalık tam yedekleme
+0 3 * * 0 cd /path/to/Secure-Wordpress && docker-compose exec restic-backup restic backup /wordpress /mysql --tag weekly
+```
+
+## 🔄 Otomatik Güncellemeler
+
+### **Watchtower Container Updates**
+
+**Amaç**: Container'ları otomatik güncelleme
+
+**Konfigürasyon**:
+```yaml
+watchtower:
+  image: containrrr/watchtower
+  environment:
+    - WATCHTOWER_CLEANUP=true
+    - WATCHTOWER_POLL_INTERVAL=86400  # 24 saat
+    - WATCHTOWER_INCLUDE_STOPPED=true
+    - WATCHTOWER_NOTIFICATIONS=email
+    - WATCHTOWER_NOTIFICATION_EMAIL_FROM=watchtower@yourdomain.com
+    - WATCHTOWER_NOTIFICATION_EMAIL_TO=admin@yourdomain.com
+```
+
+**Yönetim Komutları**:
+```bash
+# Watchtower durumunu kontrol et
+docker-compose logs watchtower
+
+# Manuel güncelleme
+docker-compose exec watchtower watchtower --run-once
+
+# Güncelleme bildirimlerini kontrol et
+# Email ayarlarını .env dosyasında yapın
+```
+
+### **WordPress Updates**
+
+**Otomatik WordPress Güncellemeleri**:
+```bash
+# WordPress core güncelle
+docker-compose exec wordpress wp --allow-root core update
+
+# Plugin'leri güncelle
+docker-compose exec wordpress wp --allow-root plugin update --all
+
+# Theme'leri güncelle
+docker-compose exec wordpress wp --allow-root theme update --all
+```
+
 ## 🚨 Acil Durum Prosedürleri
 
 ### **Container Çökmesi**
@@ -550,15 +763,23 @@ docker-compose logs | grep -i "error\|warning\|failed"
 - **ADMINISTRATIVE-GUIDE.md**: Bu dosya
 
 ### **Topluluk Desteği**
-- **GitHub Issues**: [https://github.com/omandiraci/Lite-wordpress/issues](https://github.com/omandiraci/Lite-wordpress/issues)
+- **GitHub Issues**: [https://github.com/yourusername/Secure-Wordpress/issues](https://github.com/yourusername/Secure-Wordpress/issues)
 - **Docker Community**: [https://forums.docker.com/](https://forums.docker.com/)
 - **WordPress Support**: [https://wordpress.org/support/](https://wordpress.org/support/)
+- **Traefik Documentation**: [https://doc.traefik.io/traefik/](https://doc.traefik.io/traefik/)
+- **Prometheus Documentation**: [https://prometheus.io/docs/](https://prometheus.io/docs/)
+- **Grafana Documentation**: [https://grafana.com/docs/](https://grafana.com/docs/)
 
 ### **Güvenlik Raporlama**
-Güvenlik açıkları için: security@example.com
+Güvenlik açıkları için: security@yourdomain.com
+
+### **Güvenlik Araçları Desteği**
+- **Fail2Ban**: [https://www.fail2ban.org/](https://www.fail2ban.org/)
+- **Restic**: [https://restic.net/](https://restic.net/)
+- **Watchtower**: [https://containrrr.dev/watchtower/](https://containrrr.dev/watchtower/)
 
 ---
 
-**Son Güncelleme**: 2024-10-24  
-**Versiyon**: 1.0  
-**Yazar**: Lite WordPress Team
+**Son Güncelleme**: 2024-10-25  
+**Versiyon**: 2.0 (Security Enhanced)  
+**Yazar**: Secure WordPress Team

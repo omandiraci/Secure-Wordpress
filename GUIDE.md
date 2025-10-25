@@ -1,6 +1,6 @@
-# 🚀 Lite WordPress - Kapsamlı Kılavuz
+# 🔒 Secure WordPress - Kapsamlı Kılavuz
 
-Bu kılavuz, Docker ile WordPress kurulumunun tüm detaylarını içerir.
+Bu kılavuz, güvenlik odaklı Docker ile WordPress kurulumunun tüm detaylarını içerir. Production-ready güvenlik araçları ve monitoring çözümleri ile birlikte gelir.
 
 ## 📋 İçindekiler
 
@@ -8,17 +8,21 @@ Bu kılavuz, Docker ile WordPress kurulumunun tüm detaylarını içerir.
 2. [Kurulum](#kurulum)
 3. [Konfigürasyon](#konfigürasyon)
 4. [Kullanım](#kullanım)
-5. [Güvenlik](#güvenlik)
-6. [Bakım](#bakım)
-7. [Sorun Giderme](#sorun-giderme)
-8. [Gelişmiş Kullanım](#gelişmiş-kullanım)
+5. [Güvenlik Araçları](#güvenlik-araçları)
+6. [Monitoring & Logging](#monitoring--logging)
+7. [Backup & Recovery](#backup--recovery)
+8. [Otomatik Güncellemeler](#otomatik-güncellemeler)
+9. [Bakım](#bakım)
+10. [Sorun Giderme](#sorun-giderme)
+11. [Gelişmiş Kullanım](#gelişmiş-kullanım)
 
 ## 🔧 Gereksinimler
 
 ### Sistem Gereksinimleri
-- **RAM**: Minimum 2GB, Önerilen 4GB+
-- **Disk**: Minimum 10GB boş alan
-- **İşlemci**: 2 çekirdek önerilir
+- **RAM**: Minimum 4GB, Önerilen 8GB+ (Monitoring araçları için)
+- **Disk**: Minimum 20GB boş alan (Logs ve backup için)
+- **İşlemci**: 4 çekirdek önerilir (Güvenlik araçları için)
+- **Network**: Domain adı (SSL sertifikası için)
 
 ### Yazılım Gereksinimleri
 - **Docker**: 20.10.0+
@@ -42,26 +46,36 @@ git --version
 ### 1. Projeyi İndirin
 ```bash
 # GitHub'dan klonlayın
-git clone https://github.com/omandiraci/Lite-wordpress.git
-cd Lite-wordpress
+git clone https://github.com/yourusername/Secure-Wordpress.git
+cd Secure-Wordpress
 
 # Veya ZIP olarak indirin ve açın
-wget https://github.com/omandiraci/Lite-wordpress/archive/main.zip
+wget https://github.com/yourusername/Secure-Wordpress/archive/main.zip
 unzip main.zip
-cd Lite-wordpress-main
+cd Secure-Wordpress-main
 ```
 
-### 2. Environment Dosyasını Kontrol Edin
+### 2. Otomatik Kurulum (Önerilen)
 ```bash
-# .env dosyasının varlığını kontrol edin
-ls -la .env
+# Domain adınızla otomatik kurulum
+./setup.sh yourdomain.com
 
-# .env dosyasının içeriğini görüntüleyin (güvenlik için dikkatli olun)
-cat .env
+# Bu script şunları yapar:
+# - Güvenli şifreler oluşturur
+# - WordPress güvenlik anahtarları üretir
+# - .env dosyasını oluşturur
+# - Gerekli klasörleri hazırlar
+# - Container'ları başlatır
 ```
 
-### 3. Docker Container'larını Başlatın
+### 3. Manuel Kurulum
 ```bash
+# .env dosyasını oluşturun
+cp .env.example .env
+
+# .env dosyasını düzenleyin
+nano .env
+
 # Container'ları arka planda başlatın
 docker-compose up -d
 
@@ -167,9 +181,55 @@ docker run --rm -v lite-workpress_mysqlvolume:/data -v $(pwd):/backup alpine tar
 docker run --rm -v lite-workpress_wpvolume:/data -v $(pwd):/backup alpine tar czf /backup/wordpress-backup.tar.gz -C /data .
 ```
 
-## 🔐 Güvenlik
+## 🛡️ Güvenlik Araçları
 
-### Güvenlik Kontrolleri
+### Traefik Reverse Proxy
+```bash
+# Traefik dashboard'a erişim
+https://traefik.yourdomain.com:8080
+
+# SSL sertifikalarını kontrol et
+docker-compose exec traefik cat /letsencrypt/acme.json
+
+# Traefik loglarını görüntüle
+docker-compose logs traefik
+```
+
+### Fail2Ban Brute Force Koruması
+```bash
+# Fail2Ban durumunu kontrol et
+docker-compose exec fail2ban fail2ban-client status
+
+# Aktif jail'leri listele
+docker-compose exec fail2ban fail2ban-client status sshd
+docker-compose exec fail2ban fail2ban-client status apache-auth
+
+# Engellenen IP'leri görüntüle
+docker-compose exec fail2ban fail2ban-client status apache-auth
+
+# IP'yi manuel engelle
+docker-compose exec fail2ban fail2ban-client set apache-auth banip 192.168.1.100
+
+# IP'yi engelden çıkar
+docker-compose exec fail2ban fail2ban-client set apache-auth unbanip 192.168.1.100
+```
+
+### WordPress Güvenlik Ayarları
+```bash
+# WordPress güvenlik durumunu kontrol et
+docker-compose exec wordpress wp --allow-root core version
+docker-compose exec wordpress wp --allow-root plugin list
+
+# Güvenlik eklentilerini yükle
+docker-compose exec wordpress wp --allow-root plugin install wordfence --activate
+docker-compose exec wordpress wp --allow-root plugin install limit-login-attempts --activate
+
+# WordPress güvenlik ayarlarını kontrol et
+docker-compose exec wordpress wp --allow-root config get DISALLOW_FILE_EDIT
+docker-compose exec wordpress wp --allow-root config get FORCE_SSL_ADMIN
+```
+
+### Container Güvenlik
 ```bash
 # Container güvenlik durumunu kontrol et
 docker inspect wordpress | grep -i security
@@ -177,30 +237,154 @@ docker inspect db | grep -i security
 
 # Network izolasyonunu kontrol et
 docker network ls
-docker network inspect lite-workpress_wpnet
+docker network inspect secure-wordpress_wpnet
 
 # Port erişimini kontrol et
-netstat -tlnp | grep 8080
+netstat -tlnp | grep 80
+netstat -tlnp | grep 443
 ```
 
-### Güvenlik Güncellemeleri
+### SSL Sertifikası Yönetimi
 ```bash
-# Güvenlik açıklarını kontrol et
-docker scout cves wordpress:6.4-apache
-docker scout cves mysql:8.0
+# SSL sertifikalarını kontrol et
+docker-compose exec traefik ls -la /letsencrypt/
 
-# Güvenlik güncellemelerini uygula
+# Sertifika yenileme
+docker-compose restart traefik
+
+# SSL test
+curl -I https://yourdomain.com
+```
+
+## 📊 Monitoring & Logging
+
+### Prometheus Metrics
+```bash
+# Prometheus'a erişim
+https://monitor.yourdomain.com
+
+# Metrics endpoint'lerini kontrol et
+curl http://localhost:9090/api/v1/targets
+
+# Custom metrics ekle
+# prometheus/prometheus.yml dosyasını düzenleyin
+```
+
+### Grafana Dashboard
+```bash
+# Grafana'ya erişim
+https://dashboard.yourdomain.com
+# Kullanıcı: admin
+# Şifre: .env dosyasındaki GRAFANA_ADMIN_PASSWORD
+
+# Dashboard'ları import et
+# Grafana web arayüzünden dashboard ID'leri ile import yapın
+```
+
+### Log Yönetimi
+```bash
+# WordPress loglarını görüntüle
+tail -f logs/wordpress/access.log
+tail -f logs/wordpress/error.log
+
+# MySQL loglarını görüntüle
+tail -f logs/database/error.log
+tail -f logs/database/slow.log
+
+# Traefik loglarını görüntüle
+tail -f logs/traefik/traefik.log
+
+# Log rotasyonu
+docker-compose exec wordpress logrotate -f /etc/logrotate.conf
+```
+
+## 💾 Backup & Recovery
+
+### Restic Backup
+```bash
+# Manuel backup çalıştır
+docker-compose exec restic-backup /config/backup.sh
+
+# Backup'ları listele
+docker-compose exec restic-backup restic snapshots
+
+# Backup'ı geri yükle
+docker-compose exec restic-backup restic restore latest --target /
+
+# Backup repository'sini kontrol et
+docker-compose exec restic-backup restic stats
+```
+
+### Otomatik Backup
+```bash
+# Cron job ekle (host sistemde)
+crontab -e
+
+# Günlük backup (her gece 02:00)
+0 2 * * * cd /path/to/Secure-Wordpress && docker-compose exec restic-backup /config/backup.sh
+```
+
+### Backup Stratejisi
+```bash
+# Günlük yedekleme scripti
+#!/bin/bash
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/backups/$DATE"
+
+mkdir -p $BACKUP_DIR
+
+# MySQL yedekleme
+docker-compose exec -T db mysqldump -u root -p$MYSQL_ROOT_PASSWORD --all-databases > $BACKUP_DIR/mysql.sql
+
+# WordPress dosyaları yedekleme
+docker run --rm -v secure-wordpress_wpvolume:/data -v $BACKUP_DIR:/backup alpine tar czf /backup/wordpress.tar.gz -C /data .
+
+# Eski yedekleri temizle (30 günden eski)
+find /backups -type d -mtime +30 -exec rm -rf {} \;
+```
+
+## 🔄 Otomatik Güncellemeler
+
+### Watchtower
+```bash
+# Watchtower durumunu kontrol et
+docker-compose logs watchtower
+
+# Manuel güncelleme
+docker-compose exec watchtower watchtower --run-once
+
+# Güncelleme bildirimlerini kontrol et
+# Email ayarlarını .env dosyasında yapın
+```
+
+### Container Güncellemeleri
+```bash
+# Tüm container'ları güncelle
 docker-compose pull
 docker-compose up -d
+
+# Belirli bir container'ı güncelle
+docker-compose pull wordpress
+docker-compose up -d wordpress
+
+# Güncelleme sonrası kontrol
+docker-compose ps
+docker-compose logs
 ```
 
-### SSL Sertifikası (Üretim)
+### WordPress Güncellemeleri
 ```bash
-# Let's Encrypt ile SSL
-docker run --rm -v $(pwd)/certs:/etc/letsencrypt certbot/certbot certonly --standalone -d yourdomain.com
+# WordPress core güncelle
+docker-compose exec wordpress wp --allow-root core update
 
-# SSL ile nginx proxy ekle
-# docker-compose.override.yml dosyası oluşturun
+# Plugin'leri güncelle
+docker-compose exec wordpress wp --allow-root plugin update --all
+
+# Theme'leri güncelle
+docker-compose exec wordpress wp --allow-root theme update --all
+
+# Güncelleme sonrası kontrol
+docker-compose exec wordpress wp --allow-root core version
 ```
 
 ## 🔧 Bakım
@@ -354,10 +538,21 @@ open http://localhost:3000
 - [MySQL Documentation](https://dev.mysql.com/doc/)
 
 ### Topluluk
-- [GitHub Issues](https://github.com/omandiraci/Lite-wordpress/issues)
+- [GitHub Issues](https://github.com/yourusername/Secure-Wordpress/issues)
 - [Docker Community](https://forums.docker.com/)
 - [WordPress Support](https://wordpress.org/support/)
+- [Traefik Documentation](https://doc.traefik.io/traefik/)
+- [Prometheus Documentation](https://prometheus.io/docs/)
+- [Grafana Documentation](https://grafana.com/docs/)
 
 ---
 
 **Not**: Bu kılavuz sürekli güncellenmektedir. En son versiyon için GitHub repository'sini kontrol edin.
+
+## 🔒 Güvenlik Uyarıları
+
+- **Production Kullanımı**: Bu kurulum production ortamı için tasarlanmıştır
+- **SSL Sertifikası**: Domain adınızı DNS'te sunucunuza yönlendirin
+- **Güvenlik Güncellemeleri**: Düzenli olarak güvenlik güncellemelerini uygulayın
+- **Backup**: Düzenli backup almayı unutmayın
+- **Monitoring**: Sistem durumunu sürekli izleyin
