@@ -763,7 +763,7 @@ docker-compose logs | grep -i "error\|warning\|failed"
 - **ADMINISTRATIVE-GUIDE.md**: Bu dosya
 
 ### **Topluluk Desteği**
-- **GitHub Issues**: [https://github.com/yourusername/Secure-Wordpress/issues](https://github.com/yourusername/Secure-Wordpress/issues)
+- **GitHub Issues**: [https://github.com/omandiraci/Secure-Wordpress/issues](https://github.com/omandiraci/Secure-Wordpress/issues)
 - **Docker Community**: [https://forums.docker.com/](https://forums.docker.com/)
 - **WordPress Support**: [https://wordpress.org/support/](https://wordpress.org/support/)
 - **Traefik Documentation**: [https://doc.traefik.io/traefik/](https://doc.traefik.io/traefik/)

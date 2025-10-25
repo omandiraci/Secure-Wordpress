@@ -45,7 +45,7 @@ Güvenlik odaklı, production-ready WordPress kurulumu. Bu proje, WordPress'i g�
 
 ### 1. Projeyi İndirin
 ```bash
-git clone https://github.com/yourusername/Secure-Wordpress.git
+git clone https://github.com/omandiraci/Secure-Wordpress.git
 cd Secure-Wordpress
 ```
 
@@ -212,7 +212,7 @@ Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICE
 
 ## 🆘 Destek
 
-- GitHub Issues: [Issues](https://github.com/yourusername/Secure-Wordpress/issues)
+- GitHub Issues: [Issues](https://github.com/omandiraci/Secure-Wordpress/issues)
 - Email: admin@yourdomain.com
 
 ## 🙏 Teşekkürler

@@ -46,11 +46,11 @@ git --version
 ### 1. Projeyi İndirin
 ```bash
 # GitHub'dan klonlayın
-git clone https://github.com/yourusername/Secure-Wordpress.git
+git clone https://github.com/omandiraci/Secure-Wordpress.git
 cd Secure-Wordpress
 
 # Veya ZIP olarak indirin ve açın
-wget https://github.com/yourusername/Secure-Wordpress/archive/main.zip
+wget https://github.com/omandiraci/Secure-Wordpress/archive/main.zip
 unzip main.zip
 cd Secure-Wordpress-main
 ```
@@ -538,7 +538,7 @@ open http://localhost:3000
 - [MySQL Documentation](https://dev.mysql.com/doc/)
 
 ### Topluluk
-- [GitHub Issues](https://github.com/yourusername/Secure-Wordpress/issues)
+- [GitHub Issues](https://github.com/omandiraci/Secure-Wordpress/issues)
 - [Docker Community](https://forums.docker.com/)
 - [WordPress Support](https://wordpress.org/support/)
 - [Traefik Documentation](https://doc.traefik.io/traefik/)
