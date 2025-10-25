@@ -1,0 +1,90 @@
+# Environment files
+.env
+.env.backup
+.env.*
+
+# Docker volumes
+mysqlvolume/
+wpvolume/
+traefik-ssl/
+prometheus-data/
+grafana-data/
+portainer-data/
+
+# Logs
+logs/
+logs/*
+!logs/.gitkeep
+logs/wordpress/*
+!logs/wordpress/.gitkeep
+logs/database/*
+!logs/database/.gitkeep
+logs/traefik/*
+!logs/traefik/.gitkeep
+
+# Backups
+backups/
+backups/*
+!backups/.gitkeep
+
+# SSL Certificates
+*.pem
+*.crt
+*.key
+*.p12
+*.pfx
+
+# Configuration backups
+*.bak
+*.backup
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Security sensitive files
+fail2ban/logs/
+prometheus/data/
+grafana/data/
+restic/repository/
+
+# Docker override files
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Monitoring data
+prometheus-data/
+grafana-data/
+
+# Backup repositories
+restic-repo/
+backup-repo/
+
+# SSL/TLS certificates
+letsencrypt/
+ssl/
+certs/
+
+# Fail2Ban logs
+fail2ban/logs/
+fail2ban/data/
+
+# Traefik data
+traefik-data/
