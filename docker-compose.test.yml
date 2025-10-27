@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: test-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: test123
+      MYSQL_DATABASE: testdb
+    ports:
+      - "3306:3306"
+
+  wordpress:
+    image: wordpress:6.4-apache
+    container_name: test-wordpress
+    depends_on:
+      - db
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: root
+      WORDPRESS_DB_PASSWORD: test123
+      WORDPRESS_DB_NAME: testdb
+    ports:
+      - "8080:80"

@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   # =====================
-  # 🔒 Traefik - Reverse Proxy ve SSL
+  # 🔒 Traefik - Reverse Proxy (HTTP Only)
   # =====================
   traefik:
     image: traefik:v2.11
@@ -13,29 +13,24 @@ services:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
       - --entrypoints.web.address=:80
-      - --entrypoints.websecure.address=:443
-      - --certificatesresolvers.letsencrypt.acme.email=${ADMIN_EMAIL:-admin@localhost}
-      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
       - --log.level=INFO
       - --accesslog=true
     ports:
       - "80:80"
-      - "443:443"
-      # Dashboard'a dış erişimi üretim ortamında kapatmak daha güvenli olur
       - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik-ssl:/letsencrypt
       - ./logs/traefik:/var/log/traefik
     networks:
       - wpnet
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.rule=Host(`localhost`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.traefik.entrypoints=web"
       - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.dashboard.rule=Host(`localhost`) && PathPrefix(`/dashboard`)"
+      - "traefik.http.routers.dashboard.entrypoints=web"
+      - "traefik.http.routers.dashboard.service=api@internal"
 
   # =====================
   # 🗄️ MySQL Database
@@ -46,6 +41,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "true"
     command: >
       --log-error=/var/log/mysql/error.log
       --general-log=0
@@ -64,7 +61,6 @@ services:
       - wpnet
     security_opt:
       - no-new-privileges:true
-    read_only: true
     tmpfs:
       - /tmp
       - /var/run/mysqld
@@ -86,7 +82,7 @@ services:
       WORDPRESS_CONFIG_EXTRA: |
         define('DISALLOW_FILE_EDIT', true);
         define('DISALLOW_FILE_MODS', true);
-        define('FORCE_SSL_ADMIN', true);
+        define('FORCE_SSL_ADMIN', false);
         define('WP_POST_REVISIONS', 3);
         define('AUTOSAVE_INTERVAL', 300);
         define('WP_CRON_LOCK_TIMEOUT', 60);
@@ -95,6 +91,7 @@ services:
         define('DISABLE_WP_CRON', false);
         define('WP_MEMORY_LIMIT', '256M');
         define('WP_MAX_MEMORY_LIMIT', '512M');
+      APACHE_SERVER_NAME: localhost
     volumes:
       - wpvolume:/var/www/html
       - ./logs/wordpress:/var/log/apache2
@@ -107,64 +104,9 @@ services:
       - /var/run/apache2
     labels:
       - "traefik.enable=true"
-      # HTTP router (localhost için)
-      - "traefik.http.routers.wordpress-http.rule=Host(`localhost`)"
-      - "traefik.http.routers.wordpress-http.entrypoints=web"
-      - "traefik.http.routers.wordpress-http.service=wordpress"
-      # HTTPS router (production için)
-      - "traefik.http.routers.wordpress-https.rule=Host(`localhost`)"
-      - "traefik.http.routers.wordpress-https.entrypoints=websecure"
-      - "traefik.http.routers.wordpress-https.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.wordpress-https.service=wordpress"
-      # Service definition
+      - "traefik.http.routers.wordpress.rule=Host(`localhost`)"
+      - "traefik.http.routers.wordpress.entrypoints=web"
       - "traefik.http.services.wordpress.loadbalancer.server.port=80"
-
-  # =====================
-  # 🛡️ Fail2Ban - Brute Force Protection
-  # =====================
-  fail2ban:
-    image: lscr.io/linuxserver/fail2ban:latest
-    container_name: fail2ban
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Istanbul
-      - VERBOSITY=-vv
-    volumes:
-      - ./fail2ban:/config
-      - ./logs:/var/log:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - wpnet
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=false"
-
-  # =====================
-  # 🔄 Watchtower - Otomatik Güncellemeler
-  # =====================
-  watchtower:
-    image: containrrr/watchtower
-    container_name: watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_POLL_INTERVAL=86400
-      - WATCHTOWER_INCLUDE_STOPPED=true
-      - WATCHTOWER_NOTIFICATIONS=email
-      - WATCHTOWER_NOTIFICATION_EMAIL_FROM=watchtower@localhost
-      - WATCHTOWER_NOTIFICATION_EMAIL_TO=admin@localhost
-      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER=smtp.gmail.com
-      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT=587
-      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_USER=${SMTP_USER}
-      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PASSWORD=${SMTP_PASS}
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=false"
 
   # =====================
   # 📊 Prometheus
@@ -185,9 +127,8 @@ services:
       - wpnet
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.prometheus.rule=Host(`monitor.localhost`)"
-      - "traefik.http.routers.prometheus.entrypoints=websecure"
-      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.prometheus.rule=Host(`localhost`) && PathPrefix(`/prometheus`)"
+      - "traefik.http.routers.prometheus.entrypoints=web"
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
 
   # =====================
@@ -198,7 +139,7 @@ services:
     container_name: grafana
     restart: unless-stopped
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SECURITY_DISABLE_GRAVATAR=true
     volumes:
@@ -208,12 +149,9 @@ services:
       - wpnet
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`dashboard.localhost`)"
-      - "traefik.http.routers.grafana.entrypoints=websecure"
-      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.grafana.rule=Host(`localhost`) && PathPrefix(`/grafana`)"
+      - "traefik.http.routers.grafana.entrypoints=web"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
-      - "traefik.http.middlewares.grafana-auth.basicauth.users=admin:$$2y$$10$$8K1p/a0dL2Lz8bEjN1yQCOYx6T9KJhGfHjKlMnOpQrStUvWxYzAbC"
-      - "traefik.http.routers.grafana.middlewares=grafana-auth"
 
   # =====================
   # 🧭 Portainer
@@ -229,34 +167,13 @@ services:
       - wpnet
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`docker.localhost`)"
-      - "traefik.http.routers.portainer.entrypoints=websecure"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.portainer.rule=Host(`localhost`) && PathPrefix(`/portainer`)"
+      - "traefik.http.routers.portainer.entrypoints=web"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
-
-  # =====================
-  # 💾 Restic - Backup
-  # =====================
-  restic-backup:
-    image: restic/restic
-    container_name: restic-backup
-    volumes:
-      - ./backups:/backups
-      - ./restic-config:/config
-      - mysqlvolume:/mysql:ro
-      - wpvolume:/wordpress:ro
-    environment:
-      - RESTIC_REPOSITORY=/backups
-      - RESTIC_PASSWORD=${BACKUP_PASSWORD}
-    command: /config/backup.sh
-    restart: "no"
-    labels:
-      - "traefik.enable=false"
 
 volumes:
   mysqlvolume:
   wpvolume:
-  traefik-ssl:
   prometheus-data:
   grafana-data:
   portainer-data:

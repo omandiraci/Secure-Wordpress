@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: mysqlsunucu
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: wpdatabase
+      MYSQL_USER: wpuser
+      MYSQL_PASSWORD: SecurePass123!
+      MYSQL_ROOT_PASSWORD: RootPass123!
+    volumes:
+      - mysqlvolume:/var/lib/mysql
+      - ./logs/database:/var/log/mysql
+    networks:
+      - wpnet
+    command: >
+      --log-error=/var/log/mysql/error.log
+      --general-log=1
+      --general-log-file=/var/log/mysql/general.log
+      --slow-query-log=1
+      --slow-query-log-file=/var/log/mysql/slow.log
+      --long-query-time=2
+
+  # WordPress
+  wordpress:
+    image: wordpress:6.4-apache
+    container_name: wpsunucu
+    depends_on:
+      - db
+    restart: unless-stopped
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wpuser
+      WORDPRESS_DB_PASSWORD: SecurePass123!
+      WORDPRESS_DB_NAME: wpdatabase
+      WORDPRESS_DEBUG: false
+    ports:
+      - "8080:80"
+    volumes:
+      - wpvolume:/var/www/html
+      - ./logs/wordpress:/var/log/apache2
+    networks:
+      - wpnet
+
+volumes:
+  mysqlvolume:
+  wpvolume:
+
+networks:
+  wpnet:
+    driver: bridge
