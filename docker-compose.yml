@@ -32,9 +32,8 @@ services:
       - wpnet
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN_NAME:-localhost}`)"
+      - "traefik.http.routers.traefik.entrypoints=web"
       - "traefik.http.routers.traefik.service=api@internal"
 
   # =====================
@@ -107,12 +106,12 @@ services:
       - /var/run/apache2
     labels:
       - "traefik.enable=true"
-      # HTTP router (localhost için)
-      - "traefik.http.routers.wordpress-http.rule=Host(`localhost`)"
+      # HTTP router (tüm hostlar için - test ve üretim)
+      - "traefik.http.routers.wordpress-http.rule=Host(`${DOMAIN_NAME:-localhost}`)"
       - "traefik.http.routers.wordpress-http.entrypoints=web"
       - "traefik.http.routers.wordpress-http.service=wordpress"
-      # HTTPS router (production için)
-      - "traefik.http.routers.wordpress-https.rule=Host(`localhost`)"
+      # HTTPS router (SSL sertifikası varsa)
+      - "traefik.http.routers.wordpress-https.rule=Host(`${DOMAIN_NAME:-localhost}`)"
       - "traefik.http.routers.wordpress-https.entrypoints=websecure"
       - "traefik.http.routers.wordpress-https.tls.certresolver=letsencrypt"
       - "traefik.http.routers.wordpress-https.service=wordpress"
@@ -185,9 +184,8 @@ services:
       - wpnet
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.prometheus.rule=Host(`monitor.localhost`)"
-      - "traefik.http.routers.prometheus.entrypoints=websecure"
-      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.prometheus.rule=Host(`monitor.${DOMAIN_NAME:-localhost}`)"
+      - "traefik.http.routers.prometheus.entrypoints=web"
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
 
   # =====================
@@ -208,12 +206,9 @@ services:
       - wpnet
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`dashboard.localhost`)"
-      - "traefik.http.routers.grafana.entrypoints=websecure"
-      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.grafana.rule=Host(`dashboard.${DOMAIN_NAME:-localhost}`)"
+      - "traefik.http.routers.grafana.entrypoints=web"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
-      - "traefik.http.middlewares.grafana-auth.basicauth.users=admin:$$2y$$10$$8K1p/a0dL2Lz8bEjN1yQCOYx6T9KJhGfHjKlMnOpQrStUvWxYzAbC"
-      - "traefik.http.routers.grafana.middlewares=grafana-auth"
 
   # =====================
   # 🧭 Portainer
@@ -229,9 +224,8 @@ services:
       - wpnet
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`docker.localhost`)"
-      - "traefik.http.routers.portainer.entrypoints=websecure"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.portainer.rule=Host(`docker.${DOMAIN_NAME:-localhost}`)"
+      - "traefik.http.routers.portainer.entrypoints=web"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
 
   # =====================
