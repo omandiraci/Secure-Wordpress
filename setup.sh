@@ -12,15 +12,8 @@ echo -e "${BLUE}🔒 Secure WordPress Kurulum Başlatılıyor...${NC}"
 DOMAIN_NAME=${1:-"localhost"}
 echo -e "${GREEN}🌍 Domain/IP: $DOMAIN_NAME${NC}"
 
-# .env dosyası kontrolü
-if [ ! -f .env.example ]; then
-    echo -e "${RED}❌ .env.example dosyası bulunamadı!${NC}"
-    exit 1
-fi
-
 # .env dosyasını oluştur
 echo -e "${BLUE}📝 .env dosyası oluşturuluyor...${NC}"
-cp .env.example .env
 
 # Güvenli şifreler oluştur
 MYSQL_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
@@ -38,26 +31,54 @@ SECURE_AUTH_SALT=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
 LOGGED_IN_SALT=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
 NONCE_SALT=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
 
-# .env dosyasını güncelle (# ayırıcı kullanıyoruz çünkü değerlerde | olabilir)
-sed -i.bak "s#your_secure_password_here#${MYSQL_PASSWORD}#g" .env
-sed -i.bak "s#your_secure_root_password_here#${MYSQL_ROOT_PASSWORD}#g" .env
-sed -i.bak "s#your_backup_password_here#${BACKUP_PASSWORD}#g" .env
-sed -i.bak "s#your_grafana_password_here#${GRAFANA_PASSWORD}#g" .env
-sed -i.bak "s#yourdomain.com#${DOMAIN_NAME}#g" .env
-sed -i.bak "s#admin@yourdomain.com#admin@${DOMAIN_NAME}#g" .env
+# .env dosyasını doğrudan oluştur (sed kullanmıyoruz - daha güvenli)
+cat > .env << EOF
+# MySQL Database Configuration
+MYSQL_DATABASE=wpdatabase
+MYSQL_USER=wpuser
+MYSQL_PASSWORD=${MYSQL_PASSWORD}
+MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
 
-# WordPress güvenlik anahtarlarını güncelle
-sed -i.bak "s#your_auth_key_here#${AUTH_KEY}#g" .env
-sed -i.bak "s#your_secure_auth_key_here#${SECURE_AUTH_KEY}#g" .env
-sed -i.bak "s#your_logged_in_key_here#${LOGGED_IN_KEY}#g" .env
-sed -i.bak "s#your_nonce_key_here#${NONCE_KEY}#g" .env
-sed -i.bak "s#your_auth_salt_here#${AUTH_SALT}#g" .env
-sed -i.bak "s#your_secure_auth_salt_here#${SECURE_AUTH_SALT}#g" .env
-sed -i.bak "s#your_logged_in_salt_here#${LOGGED_IN_SALT}#g" .env
-sed -i.bak "s#your_nonce_salt_here#${NONCE_SALT}#g" .env
+# WordPress Database Configuration
+WORDPRESS_DB_HOST=db
+WORDPRESS_DB_USER=wpuser
+WORDPRESS_DB_PASSWORD=${MYSQL_PASSWORD}
+WORDPRESS_DB_NAME=wpdatabase
 
-# Backup dosyasını sil
-rm -f .env.bak
+# WordPress Security Keys
+AUTH_KEY=${AUTH_KEY}
+SECURE_AUTH_KEY=${SECURE_AUTH_KEY}
+LOGGED_IN_KEY=${LOGGED_IN_KEY}
+NONCE_KEY=${NONCE_KEY}
+AUTH_SALT=${AUTH_SALT}
+SECURE_AUTH_SALT=${SECURE_AUTH_SALT}
+LOGGED_IN_SALT=${LOGGED_IN_SALT}
+NONCE_SALT=${NONCE_SALT}
+
+# WordPress Security Settings
+WORDPRESS_DEBUG=false
+WORDPRESS_DEBUG_LOG=false
+WORDPRESS_DEBUG_DISPLAY=false
+
+# Email Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=admin@${DOMAIN_NAME}
+SMTP_PASS=changeme123
+SMTP_FROM=admin@${DOMAIN_NAME}
+
+# Domain Configuration
+DOMAIN_NAME=${DOMAIN_NAME}
+ADMIN_EMAIL=admin@${DOMAIN_NAME}
+
+# Backup Configuration
+BACKUP_PASSWORD=${BACKUP_PASSWORD}
+BACKUP_RETENTION_DAYS=30
+
+# Monitoring Configuration
+GRAFANA_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+PROMETHEUS_RETENTION=200h
+EOF
 
 # İzinleri sıkılaştır
 chmod 600 .env
