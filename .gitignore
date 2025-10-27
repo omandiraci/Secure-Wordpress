@@ -1,7 +1,15 @@
 # Environment files
 .env
 .env.backup
-.env.*
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+.env.bak
+
+# IMPORTANT: .env.example should be tracked!
+!.env.example
 
 # Docker volumes
 mysqlvolume/
