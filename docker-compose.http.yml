@@ -41,8 +41,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      MYSQL_RANDOM_ROOT_PASSWORD: "true"
     command: >
       --log-error=/var/log/mysql/error.log
       --general-log=0

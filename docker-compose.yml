@@ -107,11 +107,11 @@ services:
     labels:
       - "traefik.enable=true"
       # HTTP router (tüm hostlar için - test ve üretim)
-      - "traefik.http.routers.wordpress-http.rule=Host(`${DOMAIN_NAME:-localhost}`)"
+      - "traefik.http.routers.wordpress-http.rule=Host(`${DOMAIN_NAME:-localhost}`) || Host(`127.0.0.1`)"
       - "traefik.http.routers.wordpress-http.entrypoints=web"
       - "traefik.http.routers.wordpress-http.service=wordpress"
       # HTTPS router (SSL sertifikası varsa)
-      - "traefik.http.routers.wordpress-https.rule=Host(`${DOMAIN_NAME:-localhost}`)"
+      - "traefik.http.routers.wordpress-https.rule=Host(`${DOMAIN_NAME:-localhost}`) || Host(`127.0.0.1`)"
       - "traefik.http.routers.wordpress-https.entrypoints=websecure"
       - "traefik.http.routers.wordpress-https.tls.certresolver=letsencrypt"
       - "traefik.http.routers.wordpress-https.service=wordpress"
@@ -258,6 +258,3 @@ volumes:
 networks:
   wpnet:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
