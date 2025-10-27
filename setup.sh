@@ -38,23 +38,23 @@ SECURE_AUTH_SALT=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
 LOGGED_IN_SALT=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
 NONCE_SALT=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
 
-# .env dosyasını güncelle
-sed -i.bak "s|your_secure_password_here|${MYSQL_PASSWORD}|g" .env
-sed -i.bak "s|your_secure_root_password_here|${MYSQL_ROOT_PASSWORD}|g" .env
-sed -i.bak "s|your_backup_password_here|${BACKUP_PASSWORD}|g" .env
-sed -i.bak "s|your_grafana_password_here|${GRAFANA_PASSWORD}|g" .env
-sed -i.bak "s|yourdomain.com|${DOMAIN_NAME}|g" .env
-sed -i.bak "s|admin@yourdomain.com|admin@${DOMAIN_NAME}|g" .env
+# .env dosyasını güncelle (# ayırıcı kullanıyoruz çünkü değerlerde | olabilir)
+sed -i.bak "s#your_secure_password_here#${MYSQL_PASSWORD}#g" .env
+sed -i.bak "s#your_secure_root_password_here#${MYSQL_ROOT_PASSWORD}#g" .env
+sed -i.bak "s#your_backup_password_here#${BACKUP_PASSWORD}#g" .env
+sed -i.bak "s#your_grafana_password_here#${GRAFANA_PASSWORD}#g" .env
+sed -i.bak "s#yourdomain.com#${DOMAIN_NAME}#g" .env
+sed -i.bak "s#admin@yourdomain.com#admin@${DOMAIN_NAME}#g" .env
 
 # WordPress güvenlik anahtarlarını güncelle
-sed -i.bak "s|your_auth_key_here|${AUTH_KEY}|g" .env
-sed -i.bak "s|your_secure_auth_key_here|${SECURE_AUTH_KEY}|g" .env
-sed -i.bak "s|your_logged_in_key_here|${LOGGED_IN_KEY}|g" .env
-sed -i.bak "s|your_nonce_key_here|${NONCE_KEY}|g" .env
-sed -i.bak "s|your_auth_salt_here|${AUTH_SALT}|g" .env
-sed -i.bak "s|your_secure_auth_salt_here|${SECURE_AUTH_SALT}|g" .env
-sed -i.bak "s|your_logged_in_salt_here|${LOGGED_IN_SALT}|g" .env
-sed -i.bak "s|your_nonce_salt_here|${NONCE_SALT}|g" .env
+sed -i.bak "s#your_auth_key_here#${AUTH_KEY}#g" .env
+sed -i.bak "s#your_secure_auth_key_here#${SECURE_AUTH_KEY}#g" .env
+sed -i.bak "s#your_logged_in_key_here#${LOGGED_IN_KEY}#g" .env
+sed -i.bak "s#your_nonce_key_here#${NONCE_KEY}#g" .env
+sed -i.bak "s#your_auth_salt_here#${AUTH_SALT}#g" .env
+sed -i.bak "s#your_secure_auth_salt_here#${SECURE_AUTH_SALT}#g" .env
+sed -i.bak "s#your_logged_in_salt_here#${LOGGED_IN_SALT}#g" .env
+sed -i.bak "s#your_nonce_salt_here#${NONCE_SALT}#g" .env
 
 # Backup dosyasını sil
 rm -f .env.bak
