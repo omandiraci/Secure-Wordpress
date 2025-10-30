@@ -104,6 +104,8 @@ services:
     tmpfs:
       - /tmp
       - /var/run/apache2
+    ports:
+      - "8181:80"
     labels:
       - "traefik.enable=true"
       # HTTP router (tüm hostlar için - test ve üretim)
