@@ -21,6 +21,6 @@ restic backup /mysql --tag mysql
 
 # Cleanup old backups (keep last 7 days)
 echo "Cleaning up old backups..."
-restic forget --keep-daily 7 --prune
+restic forget --keep-daily 15 --prune
 
 echo "Backup completed successfully!"

@@ -22,8 +22,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      # Dashboard'a dış erişimi üretim ortamında kapatmak daha güvenli olur
-      - "8080:8080"
+      # Dashboard portu 8080 host'a açılmıyor; dashboard'a router üzerinden
+      # `traefik.${DOMAIN_NAME}` host adıyla (entrypoint: web) erişebilirsiniz.
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-ssl:/letsencrypt
@@ -232,8 +232,10 @@ services:
   # 💾 Restic - Backup
   # =====================
   restic-backup:
-    image: restic/restic
+    image: mazzolino/restic:latest
     container_name: restic-backup
+    entrypoint: ["/bin/sh", "-c"]
+    command: "/config/backup.sh"
     volumes:
       - ./backups:/backups
       - ./restic-config:/config
@@ -242,10 +244,31 @@ services:
     environment:
       - RESTIC_REPOSITORY=/backups
       - RESTIC_PASSWORD=${BACKUP_PASSWORD}
-    command: /config/backup.sh
     restart: "no"
     labels:
       - "traefik.enable=false"
+
+  # =====================
+  # ⏰ Scheduler (cron) - Günlük 02:00'de backup
+  # =====================
+  scheduler:
+    image: mcuadros/ofelia:latest
+    container_name: ofelia-scheduler
+    restart: unless-stopped
+    depends_on:
+      - restic-backup
+    command: daemon --docker
+    environment:
+      - TZ=Europe/Istanbul
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - "traefik.enable=false"
+      - "ofelia.enabled=true"
+      # Her gün saat 02:00'de restic-backup çalıştır
+      - "ofelia.job-run.restic.schedule=0 2 * * *"
+      - "ofelia.job-run.restic.container=restic-backup"
+      - "ofelia.job-run.restic.no-overlap=true"
 
 volumes:
   mysqlvolume:
